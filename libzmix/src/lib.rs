@@ -1,12 +1,19 @@
+//#[macro_use]
+//extern crate lazy_static;
+extern crate amcl_wrapper;
+extern crate failure;
 #[macro_use]
+extern crate serde;
 extern crate serde_json;
-extern crate rand;
-extern crate amcl;
 
+extern crate bulletproofs_amcl as bulletproofs;
+extern crate merlin;
+extern crate rand;
+
+#[macro_use]
 pub mod commitments;
-pub mod ffi;
-pub mod zkl;
-pub mod prf;
-pub mod hash_functions;
+#[macro_use]
+pub mod errors;
 pub mod signatures;
-pub mod utils;
+#[cfg(feature = "ver_enc")]
+pub mod verifiable_encryption;

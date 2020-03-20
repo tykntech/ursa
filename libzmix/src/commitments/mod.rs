@@ -1,4 +1,7 @@
-use hash_functions::HashError;
+//use hash_functions::HashError;
+
+#[macro_use]
+pub mod pok_vc;
 
 #[derive(Debug)]
 pub enum CommitmentError {
@@ -7,14 +10,14 @@ pub enum CommitmentError {
     InvalidBigNumSize(usize, usize),
     ZeroMessageCount(String),
     InvalidGeneratorCount(usize, usize),
-    HashError(HashError)
+    //HashError(HashError),
 }
 
-impl From<HashError> for CommitmentError {
+/*impl From<HashError> for CommitmentError {
     fn from(err: HashError) -> CommitmentError {
         CommitmentError::HashError(err)
     }
-}
+}*/
 
 // QUESTION: It would be better if we use generic group element for this trait so it can be used
 // with Elliptic curves or IntegerMod groups like
@@ -26,10 +29,16 @@ trait CommitmentScheme {
     fn setup(num_elements: usize) -> Result<Vec<Vec<u8>>, CommitmentError>;
 
     // Commits to `messages`. Returns a commitment
-    fn commit(generators: &[&[u8]], messages: &[&[u8]]) -> Result<(Vec<u8>, Vec<u8>), CommitmentError>;
+    fn commit(
+        generators: &[&[u8]],
+        messages: &[&[u8]],
+    ) -> Result<(Vec<u8>, Vec<u8>), CommitmentError>;
 
     // Takes the `opening` and check that the `commitment` was indeed done for the `messages`
-    fn verify(commitment: &[u8], opening: &[u8], generators: &[&[u8]], messages: &[&[u8]]) -> Result<bool, CommitmentError>;
+    fn verify(
+        commitment: &[u8],
+        opening: &[u8],
+        generators: &[&[u8]],
+        messages: &[&[u8]],
+    ) -> Result<bool, CommitmentError>;
 }
-
-pub mod pedersen_BLS12_381;

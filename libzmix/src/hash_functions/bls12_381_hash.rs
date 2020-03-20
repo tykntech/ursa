@@ -1,28 +1,29 @@
 use std::collections::HashMap;
 
+use amcl::bls381::big::MODBYTES;
 use amcl::bls381::ecp::ECP;
 use amcl::bls381::ecp2::ECP2;
-use amcl::bls381::mpin::{SHA256, hash_id};
-use amcl::bls381::big::MODBYTES;
+use amcl::bls381::mpin::{hash_id, SHA256};
 
-use hash_functions::{HashFunction, HashError};
+use hash_functions::{HashError, HashFunction};
 
 const GROUP1_DOMAIN_SEP: u8 = 1;
 const GROUP2_DOMAIN_SEP: u8 = 2;
 
-
-pub struct BLS12_381_SHA256_G1 {
+pub struct Bls12381Sha256G1 {
     msg: Vec<u8>,
-    digest: [u8; MODBYTES]
+    digest: [u8; MODBYTES],
 }
 
-impl HashFunction for BLS12_381_SHA256_G1 {
+impl HashFunction for Bls12381Sha256G1 {
     fn new(args: Option<HashMap<String, &[u8]>>) -> Result<Self, HashError> {
         if args.is_some() {
-            return Err(HashError::InvalidArgs(String::from("Does not expect any args")))
+            return Err(HashError::InvalidArgs(String::from(
+                "Does not expect any args",
+            )));
         }
 
-        Ok(BLS12_381_SHA256_G1 {
+        Ok(Bls12381Sha256G1 {
             msg: vec![],
             digest: [0; MODBYTES],
         })
@@ -37,32 +38,34 @@ impl HashFunction for BLS12_381_SHA256_G1 {
     }
 
     fn digest(&self, length: Option<usize>) -> Result<Vec<u8>, HashError> {
-        let mut hash_point = self.hash_on_group();
-        let mut digest_bytes: [u8; 2*MODBYTES+1] = [0; 2*MODBYTES+1];
+        let hash_point = self.hash_on_group();
+        let mut digest_bytes: [u8; 2 * MODBYTES + 1] = [0; 2 * MODBYTES + 1];
         hash_point.tobytes(&mut digest_bytes, false);
         return_digest(&digest_bytes, length)
     }
 }
 
-impl BLS12_381_SHA256_G1 {
+impl Bls12381Sha256G1 {
     // Map the digest to group G1
     pub fn hash_on_group(&self) -> ECP {
         ECP::mapit(&self.digest)
     }
 }
 
-pub struct BLS12_381_SHA256_G2 {
+pub struct Bls12381Sha256G2 {
     msg: Vec<u8>,
-    digest: [u8; MODBYTES]
+    digest: [u8; MODBYTES],
 }
 
-impl HashFunction for BLS12_381_SHA256_G2 {
+impl HashFunction for Bls12381Sha256G2 {
     fn new(args: Option<HashMap<String, &[u8]>>) -> Result<Self, HashError> {
         if args.is_some() {
-            return Err(HashError::InvalidArgs(String::from("Does not expect any args")))
+            return Err(HashError::InvalidArgs(String::from(
+                "Does not expect any args",
+            )));
         }
 
-        Ok(BLS12_381_SHA256_G2 {
+        Ok(Bls12381Sha256G2 {
             msg: vec![],
             digest: [0; MODBYTES],
         })
@@ -77,14 +80,14 @@ impl HashFunction for BLS12_381_SHA256_G2 {
     }
 
     fn digest(&self, length: Option<usize>) -> Result<Vec<u8>, HashError> {
-        let mut hash_point = self.hash_on_group();
-        let mut digest_bytes: [u8; 4*MODBYTES] = [0; 4*MODBYTES];
+        let hash_point = self.hash_on_group();
+        let mut digest_bytes: [u8; 4 * MODBYTES] = [0; 4 * MODBYTES];
         hash_point.tobytes(&mut digest_bytes);
         return_digest(&digest_bytes, length)
     }
 }
 
-impl BLS12_381_SHA256_G2 {
+impl Bls12381Sha256G2 {
     // Map the digest to group G2
     pub fn hash_on_group(&self) -> ECP2 {
         ECP2::mapit(&self.digest)
@@ -95,12 +98,14 @@ fn return_digest(digest_bytes: &[u8], length: Option<usize>) -> Result<Vec<u8>, 
     match length {
         Some(l) => {
             if l > digest_bytes.len() {
-                return Err(HashError::InvalidDigestLength(String::from("Length greater than digest")))
+                Err(HashError::InvalidDigestLength(String::from(
+                    "Length greater than digest",
+                )))
             } else {
                 Ok(digest_bytes[0..l].to_vec())
             }
         }
-        None => Ok(digest_bytes.to_vec())
+        None => Ok(digest_bytes.to_vec()),
     }
 }
 
@@ -118,7 +123,6 @@ mod test {
 
     macro_rules! digest_test {
         ( $HashFunc:ident, $output_byte_size:expr ) => {
-
             for msg in &gen_test_msgs() {
                 let mut hf = $HashFunc::new(None).unwrap();
                 hf.update(msg.as_bytes());
@@ -130,12 +134,12 @@ mod test {
 
                 assert_eq!(d1, d2);
 
-                let d = hf.digest(Some($output_byte_size+10));
+                let d = hf.digest(Some($output_byte_size + 10));
                 assert!(d.is_err());
 
                 for n in vec![1, 2, 10, 20, $output_byte_size] {
-                    let d = hf.digest(Some($output_byte_size-n)).unwrap();
-                    assert_eq!(d2[0..$output_byte_size-n], d[0..$output_byte_size-n]);
+                    let d = hf.digest(Some($output_byte_size - n)).unwrap();
+                    assert_eq!(d2[0..$output_byte_size - n], d[0..$output_byte_size - n]);
                 }
             }
 
@@ -167,24 +171,23 @@ mod test {
                 let mut g1n2 = hf.hash_on_group();
 
                 assert_eq!(g1n1.tostring(), g1n2.tostring());
-
             }
-        }
+        };
     }
 
     #[test]
     fn test_msg_digest() {
         let hm: HashMap<String, &[u8]> = HashMap::new();
-        let hf = BLS12_381_SHA256_G1::new(Some(hm));
+        let hf = Bls12381Sha256G1::new(Some(hm));
         assert!(hf.is_err());
 
-        digest_test!(BLS12_381_SHA256_G1, 2*MODBYTES+1);
-        digest_test!(BLS12_381_SHA256_G2, 4*MODBYTES);
+        digest_test!(Bls12381Sha256G1, 2 * MODBYTES + 1);
+        digest_test!(Bls12381Sha256G2, 4 * MODBYTES);
     }
 
     #[test]
     fn test_hashing_on_groups() {
-        hashing_on_groups_test!(BLS12_381_SHA256_G1);
-        hashing_on_groups_test!(BLS12_381_SHA256_G2);
+        hashing_on_groups_test!(Bls12381Sha256G1);
+        hashing_on_groups_test!(Bls12381Sha256G2);
     }
 }

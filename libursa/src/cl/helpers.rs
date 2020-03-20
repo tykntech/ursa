@@ -1,8 +1,8 @@
+use super::constants::*;
 use bn::{BigNumber, BIGNUMBER_1};
 use cl::*;
-use errors::UrsaCryptoError;
+use errors::prelude::*;
 use pair::GroupOrderElement;
-use super::constants::*;
 
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
@@ -10,11 +10,11 @@ use std::collections::{HashMap, HashSet};
 #[cfg(test)]
 use std::cell::RefCell;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[allow(dead_code)] //FIXME
 pub enum ByteOrder {
     Big,
-    Little
+    Little,
 }
 
 #[cfg(test)]
@@ -41,7 +41,7 @@ impl MockHelper {
 }
 
 #[cfg(test)]
-pub fn bn_rand(size: usize) -> Result<BigNumber, UrsaCryptoError> {
+pub fn bn_rand(size: usize) -> UrsaCryptoResult<BigNumber> {
     if MockHelper::is_injected() {
         return match size {
             LARGE_NONCE => Ok(BigNumber::from_dec("526193306511429638192053")?),
@@ -65,11 +65,11 @@ pub fn bn_rand(size: usize) -> Result<BigNumber, UrsaCryptoError> {
 }
 
 #[cfg(not(test))]
-pub fn bn_rand(size: usize) -> Result<BigNumber, UrsaCryptoError> {
+pub fn bn_rand(size: usize) -> UrsaCryptoResult<BigNumber> {
     _bn_rand(size)
 }
 
-pub fn _bn_rand(size: usize) -> Result<BigNumber, UrsaCryptoError> {
+pub fn _bn_rand(size: usize) -> UrsaCryptoResult<BigNumber> {
     trace!("Helpers::bn_rand: >>> size:: {:?}", size);
 
     let res = BigNumber::rand(size)?;
@@ -80,16 +80,16 @@ pub fn _bn_rand(size: usize) -> Result<BigNumber, UrsaCryptoError> {
 }
 
 #[cfg(test)]
-pub fn bn_rand_range(_bn: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn bn_rand_range(_bn: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     BigNumber::from_dec("6355086599653879826316700099928903465759924565682653297540990486160410136991969646604012568191576052570982028627086748382054319397088948628665022843282950799083156383516421449932691541760677147872377591267323656783938723945915297920233965100454678367417561768144216659060966399182536425206811620699453941460281449071103436526749575365638254352831881150836568830779323361579590121888491911166612382507532248659384681554612887580241255323056245170208421770819447066550669981130450421507202133758209950007973511221223647764045990479619451838104977691662868482078262695232806059726002249095643117917855811948311863670130")
 }
 
 #[cfg(not(test))]
-pub fn bn_rand_range(bn: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn bn_rand_range(bn: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     _bn_rand_range(bn)
 }
 
-pub fn _bn_rand_range(bn: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn _bn_rand_range(bn: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     trace!("Helpers::bn_rand_range: >>> bn:: {:?}", bn);
 
     let res = bn.rand_range()?;
@@ -99,8 +99,12 @@ pub fn _bn_rand_range(bn: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
     Ok(res)
 }
 
-pub fn encode_attribute(attribute: &str, byte_order: ByteOrder) -> Result<BigNumber, UrsaCryptoError> {
-    trace!("Helpers::encode_attribute: >>> attribute: {:?}, byte_order: {:?}", attribute, byte_order);
+pub fn encode_attribute(attribute: &str, byte_order: ByteOrder) -> UrsaCryptoResult<BigNumber> {
+    trace!(
+        "Helpers::encode_attribute: >>> attribute: {:?}, byte_order: {:?}",
+        attribute,
+        byte_order
+    );
     let mut result = BigNumber::hash(attribute.as_bytes())?;
 
     if let ByteOrder::Little = byte_order {
@@ -109,13 +113,16 @@ pub fn encode_attribute(attribute: &str, byte_order: ByteOrder) -> Result<BigNum
 
     let encoded_attribute = BigNumber::from_bytes(&result)?;
 
-    trace!("Helpers::encode_attribute: <<< encoded_attribute: {:?}", encoded_attribute);
+    trace!(
+        "Helpers::encode_attribute: <<< encoded_attribute: {:?}",
+        encoded_attribute
+    );
 
     Ok(encoded_attribute)
 }
 
 #[cfg(test)]
-pub fn generate_v_prime_prime() -> Result<BigNumber, UrsaCryptoError> {
+pub fn generate_v_prime_prime() -> UrsaCryptoResult<BigNumber> {
     if MockHelper::is_injected() {
         return BigNumber::from_dec("6620937836014079781509458870800001917950459774302786434315639456568768602266735503527631640833663968617512880802104566048179854406925811731340920442625764155409951969854303612644125623549271204625894424804352003689903192473464433927658013251120302922648839652919662117216521257876025436906282750361355336367533874548955283776610021309110505377492806210342214471251451681722267655419075635703240258044336607001296052867746675049720589092355650996711033859489737240617860392914314205277920274997312351322125481593636904917159990500837822414761512231315313922792934655437808723096823124948039695324591344458785345326611693414625458359651738188933757751726392220092781991665483583988703321457480411992304516676385323318285847376271589157730040526123521479652961899368891914982347831632139045838008837541334927738208491424027");
     }
@@ -123,24 +130,27 @@ pub fn generate_v_prime_prime() -> Result<BigNumber, UrsaCryptoError> {
 }
 
 #[cfg(not(test))]
-pub fn generate_v_prime_prime() -> Result<BigNumber, UrsaCryptoError> {
+pub fn generate_v_prime_prime() -> UrsaCryptoResult<BigNumber> {
     _generate_v_prime_prime()
 }
 
-pub fn _generate_v_prime_prime() -> Result<BigNumber, UrsaCryptoError> {
+pub fn _generate_v_prime_prime() -> UrsaCryptoResult<BigNumber> {
     trace!("Helpers::generate_v_prime_prime: >>>");
 
     let a = bn_rand(LARGE_VPRIME_PRIME)?;
 
     let v_prime_prime = bitwise_or_big_int(&a, &LARGE_VPRIME_PRIME_VALUE)?;
 
-    trace!("Helpers::generate_v_prime_prime: <<< v_prime_prime: {:?}", secret!(&v_prime_prime));
+    trace!(
+        "Helpers::generate_v_prime_prime: <<< v_prime_prime: {:?}",
+        secret!(&v_prime_prime)
+    );
 
     Ok(v_prime_prime)
 }
 
 #[cfg(test)]
-pub fn generate_prime_in_range(start: &BigNumber, end: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn generate_prime_in_range(start: &BigNumber, end: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     if MockHelper::is_injected() {
         return BigNumber::from_dec("259344723055062059907025491480697571938277889515152306249728583105665800713306759149981690559193987143012367913206299323899696942213235956742930201588264091397308910346117473868881");
     }
@@ -148,22 +158,29 @@ pub fn generate_prime_in_range(start: &BigNumber, end: &BigNumber) -> Result<Big
 }
 
 #[cfg(not(test))]
-pub fn generate_prime_in_range(start: &BigNumber, end: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn generate_prime_in_range(start: &BigNumber, end: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     _generate_prime_in_range(start, end)
 }
 
-pub fn _generate_prime_in_range(start: &BigNumber, end: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
-    trace!("Helpers::generate_prime_in_range: >>> start: {:?}, end: {:?}", secret!(start), secret!(end));
+pub fn _generate_prime_in_range(start: &BigNumber, end: &BigNumber) -> UrsaCryptoResult<BigNumber> {
+    trace!(
+        "Helpers::generate_prime_in_range: >>> start: {:?}, end: {:?}",
+        secret!(start),
+        secret!(end)
+    );
 
     let prime = BigNumber::generate_prime_in_range(start, end)?;
 
-    trace!("Helpers::generate_prime_in_range: <<< prime: {:?}", secret!(&prime));
+    trace!(
+        "Helpers::generate_prime_in_range: <<< prime: {:?}",
+        secret!(&prime)
+    );
 
     Ok(prime)
 }
 
 #[cfg(test)]
-pub fn generate_safe_prime(size: usize) -> Result<BigNumber, UrsaCryptoError> {
+pub fn generate_safe_prime(size: usize) -> UrsaCryptoResult<BigNumber> {
     if MockHelper::is_injected() {
         match size {
             LARGE_PRIME => return Ok(BigNumber::from_dec("298425477551432359319017298068281828134535746771300905126443720735756534287270383542467183175737460443806952398210045827718115111810885752229119677470711305345901926067944629292942471551423868488963517954094239606951758940767987427212463600313901180668176172283994206392965011112962119159458674722785709556623")?),
@@ -176,22 +193,25 @@ pub fn generate_safe_prime(size: usize) -> Result<BigNumber, UrsaCryptoError> {
 }
 
 #[cfg(not(test))]
-pub fn generate_safe_prime(size: usize) -> Result<BigNumber, UrsaCryptoError> {
+pub fn generate_safe_prime(size: usize) -> UrsaCryptoResult<BigNumber> {
     _generate_safe_prime(size)
 }
 
-pub fn _generate_safe_prime(size: usize) -> Result<BigNumber, UrsaCryptoError> {
+pub fn _generate_safe_prime(size: usize) -> UrsaCryptoResult<BigNumber> {
     trace!("Helpers::generate_safe_prime: >>> size: {:?}", size);
 
     let safe_prime = BigNumber::generate_safe_prime(size)?;
 
-    trace!("Helpers::generate_safe_prime: <<< safe_prime: {:?}", secret!(&safe_prime));
+    trace!(
+        "Helpers::generate_safe_prime: <<< safe_prime: {:?}",
+        secret!(&safe_prime)
+    );
 
     Ok(safe_prime)
 }
 
 #[cfg(test)]
-pub fn gen_x(p: &BigNumber, q: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn gen_x(p: &BigNumber, q: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     if MockHelper::is_injected() {
         return BigNumber::from_dec("21756443327382027172985704617047967597993694788495380290694324827806324727974811069286883097008098972826137846700650885182803802394920367284736320514617598740869006348763668941791139304299497512001555851506177534398138662287596439312757685115968057647052806345903116050638193978301573172649243964671896070438965753820826200974052042958554415386005813811429117062833340444950490735389201033755889815382997617514953672362380638953231325483081104074039069074312082459855104868061153181218462493120741835250281211598658590317583724763093211076383033803581749876979865965366178002285968278439178209181121479879436785731938");
     }
@@ -199,17 +219,14 @@ pub fn gen_x(p: &BigNumber, q: &BigNumber) -> Result<BigNumber, UrsaCryptoError>
 }
 
 #[cfg(not(test))]
-pub fn gen_x(p: &BigNumber, q: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn gen_x(p: &BigNumber, q: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     _gen_x(p, q)
 }
 
-pub fn _gen_x(p: &BigNumber, q: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn _gen_x(p: &BigNumber, q: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     trace!("Helpers::gen_x: >>> p: {:?}, q: {:?}", p, q);
 
-    let mut x = p
-        .mul(&q, None)?
-        .sub_word(3)?
-        .rand_range()?;
+    let mut x = p.mul(&q, None)?.sub_word(3)?.rand_range()?;
 
     x.add_word(2)?;
 
@@ -219,7 +236,7 @@ pub fn _gen_x(p: &BigNumber, q: &BigNumber) -> Result<BigNumber, UrsaCryptoError
 }
 
 #[cfg(test)]
-pub fn random_qr(n: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn random_qr(n: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     if MockHelper::is_injected() {
         return BigNumber::from_dec("64684820421150545443421261645532741305438158267230326415141505826951816460650437611148133267480407958360035501128469885271549378871140475869904030424615175830170939416512594291641188403335834762737251794282186335118831803135149622404791467775422384378569231649224208728902565541796896860352464500717052768431523703881746487372385032277847026560711719065512366600220045978358915680277126661923892187090579302197390903902744925313826817940566429968987709582805451008234648959429651259809188953915675063700676546393568304468609062443048457324721450190021552656280473128156273976008799243162970386898307404395608179975243");
     }
@@ -227,11 +244,11 @@ pub fn random_qr(n: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
 }
 
 #[cfg(not(test))]
-pub fn random_qr(n: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn random_qr(n: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     _random_qr(n)
 }
 
-pub fn _random_qr(n: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn _random_qr(n: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     trace!("Helpers::random_qr: >>> n: {:?}", n);
 
     let qr = BigNumber::random_qr(n)?;
@@ -241,9 +258,8 @@ pub fn _random_qr(n: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
     Ok(qr)
 }
 
-
 //TODO: FIXME very inefficient code
-pub fn bitwise_or_big_int(a: &BigNumber, b: &BigNumber) -> Result<BigNumber, UrsaCryptoError> {
+pub fn bitwise_or_big_int(a: &BigNumber, b: &BigNumber) -> UrsaCryptoResult<BigNumber> {
     trace!("Helpers::bitwise_or_big_int: >>> a: {:?}, b: {:?}", a, b);
 
     let significant_bits = max(a.num_bits()?, b.num_bits()?);
@@ -265,16 +281,25 @@ pub fn transform_u32_to_array_of_u8(x: u32) -> Vec<u8> {
 
     let mut result: Vec<u8> = Vec::new();
     for i in (0..4).rev() {
-        result.push((x >> i * 8) as u8);
+        result.push((x >> (i * 8)) as u8);
     }
 
-    trace!("Helpers::transform_u32_to_array_of_u8: <<< res: {:?}", result);
+    trace!(
+        "Helpers::transform_u32_to_array_of_u8: <<< res: {:?}",
+        result
+    );
 
     result
 }
 
-pub fn get_mtilde(unrevealed_attrs: &HashSet<String>, mtilde: &mut HashMap<String, BigNumber>) -> Result<(), UrsaCryptoError> {
-    trace!("Helpers::get_mtilde: >>> unrevealed_attrs: {:?}", unrevealed_attrs);
+pub fn get_mtilde<S: ::std::hash::BuildHasher>(
+    unrevealed_attrs: &HashSet<String, S>,
+    mtilde: &mut HashMap<String, BigNumber, S>,
+) -> UrsaCryptoResult<()> {
+    trace!(
+        "Helpers::get_mtilde: >>> unrevealed_attrs: {:?}",
+        unrevealed_attrs
+    );
 
     for attr in unrevealed_attrs {
         if !mtilde.contains_key(attr) {
@@ -287,36 +312,49 @@ pub fn get_mtilde(unrevealed_attrs: &HashSet<String>, mtilde: &mut HashMap<Strin
     Ok(())
 }
 
-pub fn calc_teq(p_pub_key: &CredentialPrimaryPublicKey,
-                a_prime: &BigNumber,
-                e: &BigNumber,
-                v: &BigNumber,
-                m_tilde: &HashMap<String, BigNumber>,
-                m2tilde: &BigNumber,
-                unrevealed_attrs: &HashSet<String>) -> Result<BigNumber, UrsaCryptoError> {
+pub fn calc_teq<S: ::std::hash::BuildHasher>(
+    p_pub_key: &CredentialPrimaryPublicKey,
+    a_prime: &BigNumber,
+    e: &BigNumber,
+    v: &BigNumber,
+    m_tilde: &HashMap<String, BigNumber, S>,
+    m2tilde: &BigNumber,
+    unrevealed_attrs: &HashSet<String, S>,
+) -> UrsaCryptoResult<BigNumber> {
     trace!("Helpers::calc_teq: >>> p_pub_key: {:?}, p_pub_key: {:?}, e: {:?}, v: {:?}, m_tilde: {:?}, m2tilde: {:?}, \
     unrevealed_attrs: {:?}", p_pub_key, a_prime, e, v, m_tilde, m2tilde, unrevealed_attrs);
 
     let mut ctx = BigNumber::new_context()?;
-    let mut result: BigNumber = a_prime
-        .mod_exp(&e, &p_pub_key.n, Some(&mut ctx))?;
+    // a_prime^e % p_pub_key.n
+    let mut result: BigNumber = a_prime.mod_exp(&e, &p_pub_key.n, Some(&mut ctx))?;
 
     for k in unrevealed_attrs.iter() {
-        let cur_r = p_pub_key.r.get(k)
-            .ok_or(UrsaCryptoError::InvalidStructure(format!("Value by key '{}' not found in pk.r", k)))?;
-        let cur_m = m_tilde.get(k)
-            .ok_or(UrsaCryptoError::InvalidStructure(format!("Value by key '{}' not found in m_tilde", k)))?;
+        let cur_r = p_pub_key.r.get(k).ok_or_else(|| {
+            err_msg(
+                UrsaCryptoErrorKind::InvalidStructure,
+                format!("Value by key '{}' not found in pk.r", k),
+            )
+        })?;
+        let cur_m = m_tilde.get(k).ok_or_else(|| {
+            err_msg(
+                UrsaCryptoErrorKind::InvalidStructure,
+                format!("Value by key '{}' not found in m_tilde", k),
+            )
+        })?;
 
+        // result = result * (cur_r^cur_m % p_pub_key.n) % p_pub_key.n
         result = cur_r
             .mod_exp(&cur_m, &p_pub_key.n, Some(&mut ctx))?
             .mod_mul(&result, &p_pub_key.n, Some(&mut ctx))?;
     }
 
-    result = p_pub_key.s
+    result = p_pub_key
+        .s
         .mod_exp(&v, &p_pub_key.n, Some(&mut ctx))?
         .mod_mul(&result, &p_pub_key.n, Some(&mut ctx))?;
 
-    result = p_pub_key.rctxt
+    result = p_pub_key
+        .rctxt
         .mod_exp(&m2tilde, &p_pub_key.n, Some(&mut ctx))?
         .mod_mul(&result, &p_pub_key.n, Some(&mut ctx))?;
 
@@ -325,65 +363,102 @@ pub fn calc_teq(p_pub_key: &CredentialPrimaryPublicKey,
     Ok(result)
 }
 
-pub fn calc_tne(p_pub_key: &CredentialPrimaryPublicKey,
-                u: &HashMap<String, BigNumber>,
-                r: &HashMap<String, BigNumber>,
-                mj: &BigNumber,
-                alpha: &BigNumber,
-                t: &HashMap<String, BigNumber>,
-                is_less: bool) -> Result<Vec<BigNumber>, UrsaCryptoError> {
-    trace!("Helpers::calc_tge: >>> p_pub_key: {:?}, u: {:?}, r: {:?}, mj: {:?}, alpha: {:?}, t: {:?}", p_pub_key, u, r, mj, alpha, t);
+pub fn calc_tne<S: ::std::hash::BuildHasher>(
+    p_pub_key: &CredentialPrimaryPublicKey,
+    u: &HashMap<String, BigNumber, S>,
+    r: &HashMap<String, BigNumber, S>,
+    mj: &BigNumber,
+    alpha: &BigNumber,
+    t: &HashMap<String, BigNumber, S>,
+    is_less: bool,
+) -> UrsaCryptoResult<Vec<BigNumber>> {
+    trace!(
+        "Helpers::calc_tge: >>> p_pub_key: {:?}, u: {:?}, r: {:?}, mj: {:?}, alpha: {:?}, t: {:?}",
+        p_pub_key,
+        u,
+        r,
+        mj,
+        alpha,
+        t
+    );
 
     let mut tau_list: Vec<BigNumber> = Vec::new();
     let mut ctx = BigNumber::new_context()?;
 
     for i in 0..ITERATION {
-        let cur_u = u.get(&i.to_string())
-            .ok_or(UrsaCryptoError::InvalidStructure(format!("Value by key '{}' not found in u", i)))?;
-        let cur_r = r.get(&i.to_string())
-            .ok_or(UrsaCryptoError::InvalidStructure(format!("Value by key '{}' not found in r", i)))?;
+        let cur_u = u.get(&i.to_string()).ok_or_else(|| {
+            err_msg(
+                UrsaCryptoErrorKind::InvalidStructure,
+                format!("Value by key '{}' not found in u", i),
+            )
+        })?;
+        let cur_r = r.get(&i.to_string()).ok_or_else(|| {
+            err_msg(
+                UrsaCryptoErrorKind::InvalidStructure,
+                format!("Value by key '{}' not found in r", i),
+            )
+        })?;
 
-        let t_tau = p_pub_key.z
+        let t_tau = p_pub_key
+            .z
             .mod_exp(&cur_u, &p_pub_key.n, Some(&mut ctx))?
             .mod_mul(
                 &p_pub_key.s.mod_exp(&cur_r, &p_pub_key.n, Some(&mut ctx))?,
-                &p_pub_key.n, Some(&mut ctx)
+                &p_pub_key.n,
+                Some(&mut ctx),
             )?;
 
         tau_list.push(t_tau);
     }
 
-    let delta = r.get("DELTA")
-        .ok_or(UrsaCryptoError::InvalidStructure(format!("Value by key '{}' not found in r", "DELTA")))?;
+    let delta = r.get("DELTA").ok_or_else(|| {
+        err_msg(
+            UrsaCryptoErrorKind::InvalidStructure,
+            format!("Value by key '{}' not found in r", "DELTA"),
+        )
+    })?;
     let delta_predicate = if is_less {
         delta.set_negative(true)?
     } else {
-        delta.clone()?
+        delta.try_clone()?
     };
 
-    let t_tau = p_pub_key.z
+    let t_tau = p_pub_key
+        .z
         .mod_exp(&mj, &p_pub_key.n, Some(&mut ctx))?
         .mod_mul(
-            &p_pub_key.s.mod_exp(&delta_predicate, &p_pub_key.n, Some(&mut ctx))?,
-            &p_pub_key.n, Some(&mut ctx)
+            &p_pub_key
+                .s
+                .mod_exp(&delta_predicate, &p_pub_key.n, Some(&mut ctx))?,
+            &p_pub_key.n,
+            Some(&mut ctx),
         )?;
 
     tau_list.push(t_tau);
 
-    let mut q: BigNumber = BIGNUMBER_1.clone()?;
+    let mut q: BigNumber = BIGNUMBER_1.try_clone()?;
 
     for i in 0..ITERATION {
-        let cur_t = t.get(&i.to_string())
-            .ok_or(UrsaCryptoError::InvalidStructure(format!("Value by key '{}' not found in t", i)))?;
-        let cur_u = u.get(&i.to_string())
-            .ok_or(UrsaCryptoError::InvalidStructure(format!("Value by key '{}' not found in u", i)))?;
+        let cur_t = t.get(&i.to_string()).ok_or_else(|| {
+            err_msg(
+                UrsaCryptoErrorKind::InvalidStructure,
+                format!("Value by key '{}' not found in t", i),
+            )
+        })?;
+        let cur_u = u.get(&i.to_string()).ok_or_else(|| {
+            err_msg(
+                UrsaCryptoErrorKind::InvalidStructure,
+                format!("Value by key '{}' not found in u", i),
+            )
+        })?;
 
         q = cur_t
             .mod_exp(&cur_u, &p_pub_key.n, Some(&mut ctx))?
             .mul(&q, Some(&mut ctx))?;
     }
 
-    q = p_pub_key.s
+    q = p_pub_key
+        .s
         .mod_exp(&alpha, &p_pub_key.n, Some(&mut ctx))?
         .mod_mul(&q, &p_pub_key.n, Some(&mut ctx))?;
 
@@ -400,17 +475,23 @@ fn largest_square_less_than(delta: usize) -> usize {
 
 //Express the natural number `delta` as a sum of four integer squares,
 // i.e `delta = a^2 + b^2 + c^2 + d^2` using Lagrange's four-square theorem
-pub fn four_squares(delta: i32) -> Result<HashMap<String, BigNumber>, UrsaCryptoError> {
+pub fn four_squares(delta: i32) -> UrsaCryptoResult<HashMap<String, BigNumber>> {
     trace!("Helpers::four_squares: >>> delta: {:?}", delta);
 
     if delta < 0 {
-        return Err(UrsaCryptoError::InvalidStructure(format!("Cannot express a negative number as sum of four squares {} ", delta)));
+        return Err(err_msg(
+            UrsaCryptoErrorKind::InvalidStructure,
+            format!(
+                "Cannot express a negative number as sum of four squares {} ",
+                delta
+            ),
+        ));
     }
 
     let d = delta as usize;
     let mut roots: [usize; 4] = [largest_square_less_than(d), 0, 0, 0];
 
-    'outer: for i in (1..roots[0] + 1).rev() {
+    'outer: for i in (1..=roots[0]).rev() {
         roots[0] = i;
         if d == roots[0].pow(2) {
             roots[1] = 0;
@@ -419,7 +500,7 @@ pub fn four_squares(delta: i32) -> Result<HashMap<String, BigNumber>, UrsaCrypto
             break 'outer;
         }
         roots[1] = largest_square_less_than(d - roots[0].pow(2));
-        for j in (1..roots[1] + 1).rev() {
+        for j in (1..=roots[1]).rev() {
             roots[1] = j;
             if d == roots[0].pow(2) + roots[1].pow(2) {
                 roots[2] = 0;
@@ -427,13 +508,15 @@ pub fn four_squares(delta: i32) -> Result<HashMap<String, BigNumber>, UrsaCrypto
                 break 'outer;
             }
             roots[2] = largest_square_less_than(d - roots[0].pow(2) - roots[1].pow(2));
-            for k in (1..roots[2] + 1).rev() {
+            for k in (1..=roots[2]).rev() {
                 roots[2] = k;
                 if d == roots[0].pow(2) + roots[1].pow(2) + roots[2].pow(2) {
                     roots[3] = 0;
                     break 'outer;
                 }
-                roots[3] = largest_square_less_than(d - roots[0].pow(2) - roots[1].pow(2) - roots[2].pow(2));
+                roots[3] = largest_square_less_than(
+                    d - roots[0].pow(2) - roots[1].pow(2) - roots[2].pow(2),
+                );
                 if d == roots[0].pow(2) + roots[1].pow(2) + roots[2].pow(2) + roots[3].pow(2) {
                     break 'outer;
                 }
@@ -453,18 +536,20 @@ pub fn four_squares(delta: i32) -> Result<HashMap<String, BigNumber>, UrsaCrypto
     Ok(res)
 }
 
-pub fn group_element_to_bignum(el: &GroupOrderElement) -> Result<BigNumber, UrsaCryptoError> {
+pub fn group_element_to_bignum(el: &GroupOrderElement) -> UrsaCryptoResult<BigNumber> {
     Ok(BigNumber::from_bytes(&el.to_bytes()?)?)
 }
 
-pub fn bignum_to_group_element(num: &BigNumber) -> Result<GroupOrderElement, UrsaCryptoError> {
+pub fn bignum_to_group_element(num: &BigNumber) -> UrsaCryptoResult<GroupOrderElement> {
     Ok(GroupOrderElement::from_bytes(&num.to_bytes()?)?)
 }
 
-pub fn create_tau_list_expected_values(r_pub_key: &CredentialRevocationPublicKey,
-                                       rev_reg: &RevocationRegistry,
-                                       rev_acc_pub_key: &RevocationKeyPublic,
-                                       proof_c: &NonRevocProofCList) -> Result<NonRevocProofTauList, UrsaCryptoError> {
+pub fn create_tau_list_expected_values(
+    r_pub_key: &CredentialRevocationPublicKey,
+    rev_reg: &RevocationRegistry,
+    rev_acc_pub_key: &RevocationKeyPublic,
+    proof_c: &NonRevocProofCList,
+) -> UrsaCryptoResult<NonRevocProofTauList> {
     trace!("Helpers::create_tau_list_expected_values: >>> r_pub_key: {:?}, rev_reg: {:?}, rev_acc_pub_key: {:?}, proof_c: {:?}",
            r_pub_key, rev_reg, rev_acc_pub_key, proof_c);
 
@@ -472,8 +557,11 @@ pub fn create_tau_list_expected_values(r_pub_key: &CredentialRevocationPublicKey
     let t2 = PointG1::new_inf()?;
     let t3 = Pair::pair(&r_pub_key.h0.add(&proof_c.g)?, &r_pub_key.h_cap)?
         .mul(&Pair::pair(&proof_c.a, &r_pub_key.y)?.inverse()?)?;
-    let t4 = Pair::pair(&proof_c.g, &rev_reg.accum)?
-        .mul(&Pair::pair(&r_pub_key.g, &proof_c.w)?.mul(&rev_acc_pub_key.z)?.inverse()?)?;
+    let t4 = Pair::pair(&proof_c.g, &rev_reg.accum)?.mul(
+        &Pair::pair(&r_pub_key.g, &proof_c.w)?
+            .mul(&rev_acc_pub_key.z)?
+            .inverse()?,
+    )?;
     let t5 = proof_c.d;
     let t6 = PointG1::new_inf()?;
     let t7 = Pair::pair(&r_pub_key.pk.add(&proof_c.g)?, &proof_c.s)?
@@ -489,49 +577,73 @@ pub fn create_tau_list_expected_values(r_pub_key: &CredentialRevocationPublicKey
         t5,
         t6,
         t7,
-        t8
+        t8,
     };
 
-    trace!("Helpers::create_tau_list_expected_values: <<< non_revoc_proof_tau_list: {:?}", non_revoc_proof_tau_list);
+    trace!(
+        "Helpers::create_tau_list_expected_values: <<< non_revoc_proof_tau_list: {:?}",
+        non_revoc_proof_tau_list
+    );
 
     Ok(non_revoc_proof_tau_list)
 }
 
-pub fn create_tau_list_values(r_pub_key: &CredentialRevocationPublicKey,
-                              rev_reg: &RevocationRegistry,
-                              params: &NonRevocProofXList,
-                              proof_c: &NonRevocProofCList) -> Result<NonRevocProofTauList, UrsaCryptoError> {
+pub fn create_tau_list_values(
+    r_pub_key: &CredentialRevocationPublicKey,
+    rev_reg: &RevocationRegistry,
+    params: &NonRevocProofXList,
+    proof_c: &NonRevocProofCList,
+) -> UrsaCryptoResult<NonRevocProofTauList> {
     trace!("Helpers::create_tau_list_values: >>> r_pub_key: {:?}, rev_reg: {:?}, params: {:?}, proof_c: {:?}",
            r_pub_key, rev_reg, params, proof_c);
 
-    let t1 = r_pub_key.h.mul(&params.rho)?.add(&r_pub_key.htilde.mul(&params.o)?)?;
-    let mut t2 = proof_c.e.mul(&params.c)?
+    let t1 = r_pub_key
+        .h
+        .mul(&params.rho)?
+        .add(&r_pub_key.htilde.mul(&params.o)?)?;
+    let mut t2 = proof_c
+        .e
+        .mul(&params.c)?
         .add(&r_pub_key.h.mul(&params.m.mod_neg()?)?)?
         .add(&r_pub_key.htilde.mul(&params.t.mod_neg()?)?)?;
     if t2.is_inf()? {
         t2 = PointG1::new_inf()?;
     }
-    let t3 = Pair::pair(&proof_c.a, &r_pub_key.h_cap)?.pow(&params.c)?
+    let t3 = Pair::pair(&proof_c.a, &r_pub_key.h_cap)?
+        .pow(&params.c)?
         .mul(&Pair::pair(&r_pub_key.htilde, &r_pub_key.h_cap)?.pow(&params.r)?)?
-        .mul(&Pair::pair(&r_pub_key.htilde, &r_pub_key.y)?.pow(&params.rho)?
-            .mul(&Pair::pair(&r_pub_key.htilde, &r_pub_key.h_cap)?.pow(&params.m)?)?
-            .mul(&Pair::pair(&r_pub_key.h1, &r_pub_key.h_cap)?.pow(&params.m2)?)?
-            .mul(&Pair::pair(&r_pub_key.h2, &r_pub_key.h_cap)?.pow(&params.s)?)?.inverse()?)?;
+        .mul(
+            &Pair::pair(&r_pub_key.htilde, &r_pub_key.y)?
+                .pow(&params.rho)?
+                .mul(&Pair::pair(&r_pub_key.htilde, &r_pub_key.h_cap)?.pow(&params.m)?)?
+                .mul(&Pair::pair(&r_pub_key.h1, &r_pub_key.h_cap)?.pow(&params.m2)?)?
+                .mul(&Pair::pair(&r_pub_key.h2, &r_pub_key.h_cap)?.pow(&params.s)?)?
+                .inverse()?,
+        )?;
     let t4 = Pair::pair(&r_pub_key.htilde, &rev_reg.accum)?
         .pow(&params.r)?
         .mul(&Pair::pair(&r_pub_key.g.neg()?, &r_pub_key.h_cap)?.pow(&params.r_prime)?)?;
-    let t5 = r_pub_key.g.mul(&params.r)?.add(&r_pub_key.htilde.mul(&params.o_prime)?)?;
-    let mut t6 = proof_c.d.mul(&params.r_prime_prime)?
+    let t5 = r_pub_key
+        .g
+        .mul(&params.r)?
+        .add(&r_pub_key.htilde.mul(&params.o_prime)?)?;
+    let mut t6 = proof_c
+        .d
+        .mul(&params.r_prime_prime)?
         .add(&r_pub_key.g.mul(&params.m_prime.mod_neg()?)?)?
         .add(&r_pub_key.htilde.mul(&params.t_prime.mod_neg()?)?)?;
     if t6.is_inf()? {
         t6 = PointG1::new_inf()?;
     }
-    let t7 = Pair::pair(&r_pub_key.pk.add(&proof_c.g)?, &r_pub_key.h_cap)?.pow(&params.r_prime_prime)?
+    let t7 = Pair::pair(&r_pub_key.pk.add(&proof_c.g)?, &r_pub_key.h_cap)?
+        .pow(&params.r_prime_prime)?
         .mul(&Pair::pair(&r_pub_key.htilde, &r_pub_key.h_cap)?.pow(&params.m_prime.mod_neg()?)?)?
         .mul(&Pair::pair(&r_pub_key.htilde, &proof_c.s)?.pow(&params.r)?)?;
-    let t8 = Pair::pair(&r_pub_key.htilde, &r_pub_key.u)?.pow(&params.r)?
-        .mul(&Pair::pair(&r_pub_key.g.neg()?, &r_pub_key.h_cap)?.pow(&params.r_prime_prime_prime)?)?;
+    let t8 = Pair::pair(&r_pub_key.htilde, &r_pub_key.u)?
+        .pow(&params.r)?
+        .mul(
+            &Pair::pair(&r_pub_key.g.neg()?, &r_pub_key.h_cap)?.pow(&params.r_prime_prime_prime)?,
+        )?;
 
     let non_revoc_proof_tau_list = NonRevocProofTauList {
         t1,
@@ -541,10 +653,13 @@ pub fn create_tau_list_values(r_pub_key: &CredentialRevocationPublicKey,
         t5,
         t6,
         t7,
-        t8
+        t8,
     };
 
-    trace!("Helpers::create_tau_list_values: <<< non_revoc_proof_tau_list: {:?}", non_revoc_proof_tau_list);
+    trace!(
+        "Helpers::create_tau_list_values: <<< non_revoc_proof_tau_list: {:?}",
+        non_revoc_proof_tau_list
+    );
 
     Ok(non_revoc_proof_tau_list)
 }
@@ -557,8 +672,15 @@ mod tests {
     #[test]
     fn encode_attribute_works() {
         let test_str = "5435";
-        let test_answer = "83761840706354868391674207739241454863743470852830526299004654280720761327142";
-        assert_eq!(test_answer, encode_attribute(test_str, ByteOrder::Big).unwrap().to_dec().unwrap());
+        let test_answer =
+            "83761840706354868391674207739241454863743470852830526299004654280720761327142";
+        assert_eq!(
+            test_answer,
+            encode_attribute(test_str, ByteOrder::Big)
+                .unwrap()
+                .to_dec()
+                .unwrap()
+        );
     }
 
     #[test]
@@ -574,48 +696,98 @@ mod tests {
         let a = BigNumber::from_dec("778378032744961463933002553964902776831187587689736807008034459507677878432383414623740074");
         let b = BigNumber::from_dec("1018517988167243043134222844204689080525734196832968125318070224677190649881668353091698688");
         let result = BigNumber::from_dec("1796896020912204507067225398169591857356921784522704932326104684184868528314051767715438762");
-        assert_eq!(result.unwrap(), bitwise_or_big_int(&a.unwrap(), &b.unwrap()).unwrap());
+        assert_eq!(
+            result.unwrap(),
+            bitwise_or_big_int(&a.unwrap(), &b.unwrap()).unwrap()
+        );
     }
 
     #[test]
     fn four_squares_works() {
-        let res = four_squares(107 as i32);
+        let res = four_squares(107);
         let res_data = res.unwrap();
 
-        assert_eq!("9".to_string(), res_data.get("0").unwrap().to_dec().unwrap());
-        assert_eq!("5".to_string(), res_data.get("1").unwrap().to_dec().unwrap());
-        assert_eq!("1".to_string(), res_data.get("2").unwrap().to_dec().unwrap());
-        assert_eq!("0".to_string(), res_data.get("3").unwrap().to_dec().unwrap());
+        assert_eq!(
+            "9".to_string(),
+            res_data.get("0").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "5".to_string(),
+            res_data.get("1").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "1".to_string(),
+            res_data.get("2").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "0".to_string(),
+            res_data.get("3").unwrap().to_dec().unwrap()
+        );
 
-        let res = four_squares(112 as i32);
+        let res = four_squares(112);
         let res_data = res.unwrap();
 
-        assert_eq!("10".to_string(), res_data.get("0").unwrap().to_dec().unwrap());
-        assert_eq!("2".to_string(), res_data.get("1").unwrap().to_dec().unwrap());
-        assert_eq!("2".to_string(), res_data.get("2").unwrap().to_dec().unwrap());
-        assert_eq!("2".to_string(), res_data.get("3").unwrap().to_dec().unwrap());
+        assert_eq!(
+            "10".to_string(),
+            res_data.get("0").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "2".to_string(),
+            res_data.get("1").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "2".to_string(),
+            res_data.get("2").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "2".to_string(),
+            res_data.get("3").unwrap().to_dec().unwrap()
+        );
 
-
-        let res = four_squares(253 as i32);
+        let res = four_squares(253);
         let res_data = res.unwrap();
 
-        assert_eq!("14".to_string(), res_data.get("0").unwrap().to_dec().unwrap());
-        assert_eq!("7".to_string(), res_data.get("1").unwrap().to_dec().unwrap());
-        assert_eq!("2".to_string(), res_data.get("2").unwrap().to_dec().unwrap());
-        assert_eq!("2".to_string(), res_data.get("3").unwrap().to_dec().unwrap());
+        assert_eq!(
+            "14".to_string(),
+            res_data.get("0").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "7".to_string(),
+            res_data.get("1").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "2".to_string(),
+            res_data.get("2").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "2".to_string(),
+            res_data.get("3").unwrap().to_dec().unwrap()
+        );
 
-        let res = four_squares(1506099439 as i32);
+        let res = four_squares(1506099439);
         let res_data = res.unwrap();
 
-        assert_eq!("38807".to_string(), res_data.get("0").unwrap().to_dec().unwrap());
-        assert_eq!("337".to_string(), res_data.get("1").unwrap().to_dec().unwrap());
-        assert_eq!("50".to_string(), res_data.get("2").unwrap().to_dec().unwrap());
-        assert_eq!("11".to_string(), res_data.get("3").unwrap().to_dec().unwrap());
+        assert_eq!(
+            "38807".to_string(),
+            res_data.get("0").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "337".to_string(),
+            res_data.get("1").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "50".to_string(),
+            res_data.get("2").unwrap().to_dec().unwrap()
+        );
+        assert_eq!(
+            "11".to_string(),
+            res_data.get("3").unwrap().to_dec().unwrap()
+        );
     }
 
     #[test]
     fn transform_u32_to_array_of_u8_works() {
-        let int = 0x74BA7445;
+        let int = 0x74BA_7445;
         let answer = vec![0x74, 0xBA, 0x74, 0x45];
         assert_eq!(transform_u32_to_array_of_u8(int), answer)
     }
@@ -648,7 +820,15 @@ mod tests {
         let proof = prover::mocks::ne_proof();
         let pk = issuer::mocks::credential_primary_public_key();
 
-        let res = calc_tne(&pk, &proof.u, &proof.r, &proof.mj, &proof.alpha, &proof.t, proof.predicate.is_less());
+        let res = calc_tne(
+            &pk,
+            &proof.u,
+            &proof.r,
+            &proof.mj,
+            &proof.alpha,
+            &proof.t,
+            proof.predicate.is_less(),
+        );
 
         assert!(res.is_ok());
 
@@ -685,8 +865,15 @@ mod tests {
         let pk = issuer::mocks::credential_primary_public_key();
         let unrevealed_attrs = prover::mocks::unrevealed_attrs();
 
-        let res = calc_teq(&pk, &proof.a_prime, &proof.e, &proof.v,
-                           &proof.m, &proof.m2, &unrevealed_attrs);
+        let res = calc_teq(
+            &pk,
+            &proof.a_prime,
+            &proof.e,
+            &proof.v,
+            &proof.m,
+            &proof.m2,
+            &unrevealed_attrs,
+        );
 
         assert!(res.is_ok());
         assert_eq!("91264240506826174927348047353965425159860757123338479073424113940259806551851229\

@@ -1,14 +1,13 @@
-use std::os::raw::{c_void, c_char};
+use std::os::raw::{c_char, c_void};
 
-use errors::ErrorCode;
+use errors::prelude::*;
+use ffi::ErrorCode;
 
-extern crate time;
 extern crate log;
+extern crate time;
 
-use errors::ToErrorCode;
-
-use cl::logger::{EnabledCB, LogCB, FlushCB, HLCryptoLogger, HLCryptoDefaultLogger};
-use ffi::ctypes::CTypesUtils;
+use utils::ctypes::*;
+use utils::logger::{EnabledCB, FlushCB, HLCryptoDefaultLogger, HLCryptoLogger, LogCB};
 
 /// Set custom logger implementation.
 ///
@@ -23,17 +22,25 @@ use ffi::ctypes::CTypesUtils;
 /// #Returns
 /// Error code
 #[no_mangle]
-pub extern fn ursa_set_logger(context: *const c_void,
-                                     enabled: Option<EnabledCB>,
-                                     log: Option<LogCB>,
-                                     flush: Option<FlushCB>) -> ErrorCode {
-    trace!("ursa_set_logger >>> context: {:?}, enabled: {:?}, log: {:?}, flush: {:?}", context, log, enabled, flush);
+pub extern "C" fn ursa_set_logger(
+    context: *const c_void,
+    enabled: Option<EnabledCB>,
+    log: Option<LogCB>,
+    flush: Option<FlushCB>,
+) -> ErrorCode {
+    trace!(
+        "ursa_set_logger >>> context: {:?}, enabled: {:?}, log: {:?}, flush: {:?}",
+        context,
+        log,
+        enabled,
+        flush
+    );
 
     check_useful_c_callback!(log, ErrorCode::CommonInvalidParam3);
 
     let res = match HLCryptoLogger::init(context, enabled, log, flush) {
         Ok(()) => ErrorCode::Success,
-        Err(err) => err.to_error_code()
+        Err(err) => err.into(),
     };
 
     trace!("ursa_set_logger: <<< res: {:?}", res);
@@ -54,16 +61,19 @@ pub extern fn ursa_set_logger(context: *const c_void,
 /// #Returns
 /// Error code
 #[no_mangle]
-pub extern fn ursa_set_default_logger(pattern: *const c_char) -> ErrorCode {
+pub extern "C" fn ursa_set_default_logger(pattern: *const c_char) -> ErrorCode {
     trace!("ursa_set_default_logger >>> pattern: {:?}", pattern);
 
     check_useful_opt_c_str!(pattern, ErrorCode::CommonInvalidParam1);
 
-    trace!("ursa_set_default_logger: entities >>> pattern: {:?}", pattern);
+    trace!(
+        "ursa_set_default_logger: entities >>> pattern: {:?}",
+        pattern
+    );
 
     let res = match HLCryptoDefaultLogger::init(pattern) {
         Ok(()) => ErrorCode::Success,
-        Err(err) => err.to_error_code()
+        Err(err) => err.into(),
     };
 
     trace!("ursa_set_default_logger: <<< res: {:?}", res);
