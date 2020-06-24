@@ -1,6 +1,8 @@
 pub const ALGORITHM_NAME: &str = "ED25519_SHA2_512";
 
 use super::{KeyGenOption, SignatureScheme};
+#[cfg(any(feature = "x25519", feature = "x25519_asm"))]
+use ed25519_dalek::SecretKey as SK;
 use ed25519_dalek::{Keypair, PublicKey as PK, Signature};
 pub use ed25519_dalek::{
     EXPANDED_SECRET_KEY_LENGTH as PRIVATE_KEY_SIZE, PUBLIC_KEY_LENGTH as PUBLIC_KEY_SIZE,
@@ -19,6 +21,19 @@ pub struct Ed25519Sha512;
 
 #[cfg(any(feature = "x25519", feature = "x25519_asm"))]
 impl Ed25519Sha512 {
+    /// Creates a curve25519 key from an ed25519 public key.
+    ///
+    /// Used to derive the public key for DH key exchange.
+    ///
+    /// # Example
+    /// ```
+    /// use ursa::signatures::ed25519::Ed25519Sha512;
+    /// use ursa::signatures::SignatureScheme;
+    ///
+    /// let (pk, sk) = Ed25519Sha512::new().keypair(None).unwrap();
+    /// let curve_pk = Ed25519Sha512::ver_key_to_key_exchange(&pk).unwrap();
+    /// let curve_sk = Ed25519Sha512::sign_key_to_key_exchange(&sk).unwrap();
+    /// ```
     pub fn ver_key_to_key_exchange(pk: &PublicKey) -> Result<PublicKey, CryptoError> {
         use curve25519_dalek::edwards::CompressedEdwardsY;
 
@@ -33,6 +48,60 @@ impl Ed25519Sha512 {
                 "Invalid public key provided. Cannot convert to key exchange key"
             ))),
         }
+    }
+
+    /// Creates a curve25519 key from an ed25519 private key.
+    ///
+    /// Used to derive the private key for DH key exchange.
+    ///
+    /// # Example
+    /// ```
+    /// use ursa::signatures::ed25519::Ed25519Sha512;
+    /// use ursa::signatures::SignatureScheme;
+    ///
+    /// let (pk, sk) = Ed25519Sha512::new().keypair(None).unwrap();
+    /// let curve_pk = Ed25519Sha512::ver_key_to_key_exchange(&pk).unwrap();
+    /// let curve_sk = Ed25519Sha512::sign_key_to_key_exchange(&sk).unwrap();
+    /// ```
+    pub fn sign_key_to_key_exchange(sk: &PrivateKey) -> Result<PrivateKey, CryptoError> {
+        // Length is normally 64 but we only need the secret from the first half
+        if sk.len() < 32 {
+            return Err(CryptoError::ParseError(format!(
+                "Invalid private key provided"
+            )));
+        }
+        // hash secret
+        let hash = sha2::Sha512::digest(&sk[..32]);
+        let mut output = [0u8; 32];
+        output.copy_from_slice(&hash[..32]);
+        // clamp result
+        let secret = x25519_dalek::StaticSecret::from(output);
+        Ok(PrivateKey(secret.to_bytes().to_vec()))
+    }
+
+    /// Expand an ed25519 keypair from the input key material.
+    ///
+    /// Used to derive a complete keypair from a predetermined secret.
+    ///
+    /// # Example
+    /// ```
+    /// use ursa::signatures::ed25519::Ed25519Sha512;
+    ///
+    /// let ikm = b"000000000000000000000000000Test1";
+    /// let (pk, sk) = Ed25519Sha512::expand_keypair(ikm).unwrap();
+    /// ```
+    pub fn expand_keypair(ikm: &[u8]) -> Result<(PublicKey, PrivateKey), CryptoError> {
+        if ikm.len() < 32 {
+            return Err(CryptoError::ParseError(format!(
+                "Invalid key material provided"
+            )));
+        }
+        let mut private = vec![0u8; 64];
+        private[..32].copy_from_slice(&ikm[..32]);
+        let sk = SK::from_bytes(&ikm[..32]).unwrap();
+        let pk = PK::from(&sk).to_bytes().to_vec();
+        private[32..].copy_from_slice(pk.as_ref());
+        Ok((PublicKey(pk), PrivateKey(private)))
     }
 }
 
@@ -56,8 +125,7 @@ impl SignatureScheme for Ed25519Sha512 {
                     .map_err(|e| CryptoError::KeyGenError(e.to_string()))?,
             },
             None => {
-                let mut rng =
-                    OsRng::new().map_err(|e| CryptoError::KeyGenError(e.msg.to_string()))?;
+                let mut rng = OsRng::default();
                 Keypair::generate(&mut rng)
             }
         };
@@ -107,6 +175,12 @@ mod test {
     const SIGNATURE_1: &str = "451b5b8e8725321541954997781de51f4142e4a56bab68d24f6a6b92615de5eefb74134138315859a32c7cf5fe5a488bc545e2e08e5eedfd1fb10188d532d808";
     const PRIVATE_KEY: &str = "1c1179a560d092b90458fe6ab8291215a427fcd6b3927cb240701778ef55201927c96646f2d4632d4fc241f84cbc427fbc3ecaa95becba55088d6c7b81fc5bbf";
     const PUBLIC_KEY: &str = "27c96646f2d4632d4fc241f84cbc427fbc3ecaa95becba55088d6c7b81fc5bbf";
+    #[cfg(any(feature = "x25519", feature = "x25519_asm"))]
+    const PRIVATE_KEY_X25519: &str =
+        "08e7286c232ec71b37918533ea0229bf0c75d3db4731df1c5c03c45bc909475f";
+    #[cfg(any(feature = "x25519", feature = "x25519_asm"))]
+    const PUBLIC_KEY_X25519: &str =
+        "9b4260484c889158c128796103dc8d8b883977f2ef7efb0facb12b6ca9b2ae3d";
 
     #[test]
     #[ignore]
@@ -202,11 +276,36 @@ mod test {
 
     #[cfg(any(feature = "x25519", feature = "x25519_asm"))]
     #[test]
-    fn ed25519_to_x25519() {
+    fn ed25519_to_x25519_default() {
         let scheme = Ed25519Sha512::new();
         let (p, _) = scheme.keypair(None).unwrap();
 
         let res = Ed25519Sha512::ver_key_to_key_exchange(&p);
         assert!(res.is_ok());
+    }
+
+    #[cfg(any(feature = "x25519", feature = "x25519_asm"))]
+    #[test]
+    fn ed25519_to_x25519_verify() {
+        let sk = PrivateKey(hex::decode(PRIVATE_KEY).unwrap());
+        let pk = PublicKey(hex::decode(PUBLIC_KEY).unwrap());
+
+        let x_pk = Ed25519Sha512::ver_key_to_key_exchange(&pk).unwrap();
+        assert_eq!(hex::encode(&x_pk), PUBLIC_KEY_X25519);
+
+        let x_sk = Ed25519Sha512::sign_key_to_key_exchange(&sk).unwrap();
+        assert_eq!(hex::encode(&x_sk), PRIVATE_KEY_X25519);
+    }
+
+    #[cfg(any(feature = "x25519", feature = "x25519_asm"))]
+    #[test]
+    fn nacl_derive_from_seed() {
+        let seed = b"000000000000000000000000Trustee1";
+        let test_sk = hex::decode("3030303030303030303030303030303030303030303030305472757374656531e33aaf381fffa6109ad591fdc38717945f8fabf7abf02086ae401c63e9913097").unwrap();
+        let test_pk = &test_sk[32..];
+
+        let (pk, sk) = Ed25519Sha512::expand_keypair(seed).unwrap();
+        assert_eq!(pk.0, test_pk);
+        assert_eq!(sk.0, test_sk);
     }
 }
