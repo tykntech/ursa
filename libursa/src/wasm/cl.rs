@@ -1,5 +1,6 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
+use serde::{Serialize, Deserialize};
 
 use std::collections::HashSet;
 
@@ -9,6 +10,11 @@ use cl::RevocationTailsAccessor;
 use super::convert_from_js;
 
 #[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
+pub struct JsCredentialSchema(cl::CredentialSchema);
+
+#[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 pub struct CredentialSchema(cl::CredentialSchemaBuilder);
 
 #[wasm_bindgen]
@@ -21,6 +27,8 @@ impl CredentialSchema {
         self.0.add_attr(attribute).unwrap();
     }
 }
+#[derive(Serialize, Deserialize)]
+pub struct JsNonCredentialSchema(cl::NonCredentialSchema);
 
 #[wasm_bindgen]
 pub struct NonCredentialSchema(cl::NonCredentialSchemaBuilder);
@@ -76,6 +84,7 @@ pub struct CredentialValues(cl::CredentialValuesBuilder);
 pub struct CredentialPrimaryPublicKey(cl::CredentialPrimaryPublicKey);
 
 #[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 pub struct CredentialPublicKey(cl::CredentialPublicKey);
 
 #[wasm_bindgen]
@@ -88,7 +97,7 @@ impl CredentialPublicKey {
     }
     pub fn getRevocationKey(&self) -> Result<JsValue, JsValue> {
         match maperr!(self.0.get_revocation_key()) {
-            Some(k) => Ok(JsValue::from_serde(&CredentialRevocationPublicKey(k)).unwrap()),
+            Some(k) => Ok(JsValue::from_serde(&CredentialRevocationPublicKey(k)).map_err(|e| "parameter failed to serde".to_string())?),
             None => Ok(JsValue::NULL),
         }
     }
@@ -99,15 +108,18 @@ impl CredentialPublicKey {
 pub struct CredentialRevocationPublicKey(cl::CredentialRevocationPublicKey);
 
 #[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 pub struct CredentialPrivateKey(cl::CredentialPrivateKey);
 
 #[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 pub struct CredentialKeyCorrectnessProof(cl::CredentialKeyCorrectnessProof);
 
 /// Convenience class for javascript. This provides a name-value pair structure
 /// instead of a tuple. The compiler complains about unused fields
 /// so allow(unused) is in place for now
 #[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 #[allow(non_snake_case, unused)]
 pub struct CredentialDefinition {
     publicKey: CredentialPublicKey,
@@ -116,14 +128,35 @@ pub struct CredentialDefinition {
 }
 
 #[wasm_bindgen]
+impl CredentialDefinition {
+    #[wasm_bindgen(constructor)]
+    pub fn new( js_attrs: JsValue,
+                js_hidden_attrs: JsValue,
+                support_revocation: bool) -> Result<JsValue,JsValue> {
+
+        let attrs: JsCredentialSchema = js_attrs.into_serde().map_err(|e| "schema parameter failed to serde".to_string())?;
+        let hidden_attrs: JsNonCredentialSchema = js_hidden_attrs.into_serde().map_err(|e| "hidden schema parameter failed to serde".to_string())?;
+
+        let (credential_public_key, credential_private_key, credential_key_correctness_proof) =
+        cl::issuer::Issuer::new_credential_def(&attrs.0, &hidden_attrs.0, support_revocation)?;
+        Ok(JsValue::from_serde(&CredentialDefinition {
+            publicKey: CredentialPublicKey(credential_public_key),
+            privateKey: CredentialPrivateKey(credential_private_key),
+            keyCorrectnessProof: CredentialKeyCorrectnessProof(credential_key_correctness_proof),
+        }).map_err(|e| "parameter failed to serde".to_string())?)
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 pub struct MasterSecret(cl::MasterSecret);
 
 #[wasm_bindgen]
 impl MasterSecret {
-    pub fn new() -> Result<MasterSecret, JsValue> {
-        Ok(MasterSecret(maperr!(
-            cl::prover::Prover::new_master_secret()
-        )))
+    pub fn new() -> Result<JsValue, JsValue> {
+        Ok(JsValue::from_serde(&MasterSecret(
+            cl::prover::Prover::new_master_secret()?
+        )).map_err(|e| "parameter failed to serde".to_string())?)
     }
 }
 
@@ -432,6 +465,7 @@ impl ProofVerifier {
     }
 }
 
+#[wasm_bindgen]
 pub struct Issuer;
 
 #[wasm_bindgen]

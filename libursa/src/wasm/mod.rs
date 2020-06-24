@@ -11,6 +11,8 @@ pub mod encryption;
 pub mod secp256k1;
 #[cfg(feature = "x25519")]
 pub mod x25519;
+#[cfg(feature = "cl")]
+pub mod cl;
 
 use keys::{PrivateKey, PublicKey, SessionKey};
 

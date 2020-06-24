@@ -46,7 +46,6 @@ dependencies = [
  "block-cipher",
  "ghash",
  "subtle 2.2.3",
- "zeroize",
 ]
 
 [[package]]
@@ -622,7 +621,7 @@ dependencies = [
  "digest",
  "packed_simd",
  "rand_core 0.5.1",
- "subtle 2.2.2",
+ "subtle 2.2.3",
  "zeroize",
 ]
 
@@ -1828,7 +1827,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8326b2c654932e3e4f9196e69d08fdf7cfd718e1dc6f66b347e6024a0c961402"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.1",
  "subtle 2.2.3",
 ]
 

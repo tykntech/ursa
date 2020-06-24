@@ -42,7 +42,7 @@ var rev_tails_generator_ptr = ref.refType(obj);
 
 
 // binding to "cl" functions...
-var cl = new ffi.Library('libursa', {
+var cl = new ffi.Library('../../target/release/libursa', {
     //'ursa_cl_blinded_credential_secrets_correctness_proof_free': ['int',[blinded_credential_secrets_correctness_proof_ptr]],
     'ursa_cl_blinded_credential_secrets_correctness_proof_from_json': ['int',[blinded_credential_secrets_correctness_proof_json_ptr,blinded_credential_secrets_correctness_proof_ptr]],
     'ursa_cl_blinded_credential_secrets_correctness_proof_to_json': ['int',[blinded_credential_secrets_correctness_proof_ptr,blinded_credential_secrets_correctness_proof_json_ptr]],
